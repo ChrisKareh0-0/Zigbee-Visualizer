@@ -14,6 +14,18 @@ and comparing snapshots:
 python .\mesh_frontend.py
 ```
 
+### Deploying the visualizer to Vercel
+
+The repository includes a `pyproject.toml` entrypoint so Vercel can build the
+Python handler. Push `pyproject.toml` and `mesh_frontend.py` together, then
+redeploy the project.
+
+The Vercel deployment is intended for visualizing snapshots committed to the
+repository. Vercel function storage is temporary, so imports and MQTT captures
+made through the deployed site are not a durable database. For durable
+captures, keep using the local frontend or commit/export the resulting
+snapshot files to the repository (or connect a separate persistent store).
+
 Open `http://127.0.0.1:8765`. The frontend keeps MQTT credentials in the
 current browser tab only; the backend stores redacted snapshot metadata and
 does not persist the credentials. It provides:

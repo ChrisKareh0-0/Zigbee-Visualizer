@@ -1,0 +1,7 @@
+[project]
+name = "zigbee-mesh-lab"
+version = "0.1.0"
+requires-python = ">=3.11,<3.15"
+
+[tool.vercel]
+entrypoint = "mesh_frontend:Handler"

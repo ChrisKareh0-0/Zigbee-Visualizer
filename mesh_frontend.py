@@ -6,6 +6,8 @@ from __future__ import annotations
 import argparse
 import json
 import mimetypes
+import os
+import shutil
 import threading
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -18,6 +20,10 @@ import zigbee_mesh as mesh
 
 
 WEB_ROOT = Path(__file__).resolve().parent / "web"
+
+
+_serverless_app: "MeshApp | None" = None
+_serverless_app_lock = threading.Lock()
 
 
 class MeshApp:
@@ -197,7 +203,13 @@ class Handler(BaseHTTPRequestHandler):
 
     @property
     def app(self) -> MeshApp:
-        return self.server.app  # type: ignore[attr-defined]
+        # The local server attaches the application to the HTTPServer instance.
+        # Vercel constructs BaseHTTPRequestHandler directly, so there is no
+        # local server object carrying ``app`` in that environment.
+        attached_app = getattr(self.server, "app", None)
+        if attached_app is not None:
+            return attached_app
+        return serverless_app()
 
     def log_message(self, format: str, *args: Any) -> None:
         # Keep the terminal useful: only application errors/jobs are printed.
@@ -323,6 +335,34 @@ def main() -> int:
     finally:
         server.server_close()
     return 0
+
+
+def serverless_app() -> MeshApp:
+    """Return the application used by a Vercel Python function.
+
+    Vercel's deployed filesystem is read-only, while ``/tmp`` is writable but
+    ephemeral. Seed that writable directory from the snapshots committed with
+    the project so the deployed visualizer can inspect existing maps and can
+    accept imports for the lifetime of a warm function instance.
+    """
+    global _serverless_app
+    if _serverless_app is not None:
+        return _serverless_app
+
+    with _serverless_app_lock:
+        if _serverless_app is not None:
+            return _serverless_app
+
+        if os.getenv("VERCEL"):
+            output_dir = Path(os.getenv("MESH_OUTPUT_DIR", "/tmp/zigbee-mesh-snapshots"))
+            bundled_dir = WEB_ROOT.parent / "mesh-snapshots"
+            if not output_dir.exists() and bundled_dir.is_dir():
+                shutil.copytree(bundled_dir, output_dir)
+        else:
+            output_dir = Path(os.getenv("MESH_OUTPUT_DIR", "mesh-snapshots"))
+
+        _serverless_app = MeshApp(str(output_dir))
+        return _serverless_app
 
 
 if __name__ == "__main__":
