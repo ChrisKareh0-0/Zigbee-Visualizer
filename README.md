@@ -16,9 +16,9 @@ python .\mesh_frontend.py
 
 ### Deploying the visualizer to Vercel
 
-The repository includes a `pyproject.toml` entrypoint so Vercel can build the
-Python handler. Push `pyproject.toml` and `mesh_frontend.py` together, then
-redeploy the project.
+The repository includes a `pyproject.toml` entrypoint and dependency list so
+Vercel can build the Python handler. Push `pyproject.toml`,
+`mesh_frontend.py`, and `zigbee_mesh.py` together, then redeploy the project.
 
 The Vercel deployment is intended for visualizing snapshots committed to the
 repository. Vercel function storage is temporary, so imports and MQTT captures

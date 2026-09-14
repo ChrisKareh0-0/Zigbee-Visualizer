@@ -24,14 +24,22 @@ from typing import Any
 
 try:
     import paho.mqtt.client as mqtt
-except ImportError as exc:  # pragma: no cover - exercised by the CLI
-    raise SystemExit(
-        "Missing dependency: install it with 'python -m pip install -r requirements.txt'"
-    ) from exc
+except ImportError:  # pragma: no cover - exercised when only viewing snapshots
+    mqtt = None  # type: ignore[assignment]
 
 
 DEFAULT_BASE_TOPIC = "zigbee2mqtt"
 DEFAULT_OUTPUT_DIR = "mesh-snapshots"
+
+
+def require_mqtt() -> Any:
+    """Return paho-mqtt or raise an actionable error when capture is unavailable."""
+    if mqtt is None:
+        raise RuntimeError(
+            "MQTT capture requires paho-mqtt; install it with "
+            "'python -m pip install -r requirements.txt'"
+        )
+    return mqtt
 
 
 def now_utc() -> datetime:
@@ -76,10 +84,11 @@ def parse_json(payload: bytes) -> Any:
 
 def paho_client(client_id: str) -> mqtt.Client:
     """Create a client compatible with paho-mqtt 1.x and 2.x."""
+    mqtt_lib = require_mqtt()
     try:
-        return mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=client_id)
+        return mqtt_lib.Client(mqtt_lib.CallbackAPIVersion.VERSION2, client_id=client_id)
     except AttributeError:
-        return mqtt.Client(client_id=client_id)
+        return mqtt_lib.Client(client_id=client_id)
 
 
 def configure_tls(client: mqtt.Client, ca_file: str | None) -> None:
