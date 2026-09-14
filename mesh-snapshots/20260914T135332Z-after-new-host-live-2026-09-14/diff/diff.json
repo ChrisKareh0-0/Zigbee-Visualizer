@@ -1,0 +1,84 @@
+{
+  "after": {
+    "captured_at": "2026-09-14T13:53:32.192958+00:00",
+    "label": "after-new-host-live-2026-09-14"
+  },
+  "before": {
+    "captured_at": "2026-09-14T13:56:21.843539+00:00",
+    "label": "networkmap-2026-09-14-13-56-21-274Z"
+  },
+  "devices": {
+    "changed": []
+  },
+  "links": {
+    "added": [],
+    "changed": [],
+    "degraded": [],
+    "removed": [],
+    "route_changes": []
+  },
+  "lqi_statistics": {
+    "after": {
+      "count": 1371,
+      "max": 255,
+      "mean": 157.3,
+      "median": 144,
+      "min": 0,
+      "p10": 40
+    },
+    "before": {
+      "count": 1371,
+      "max": 255,
+      "mean": 157.3,
+      "median": 144,
+      "min": 0,
+      "p10": 40
+    }
+  },
+  "network": {
+    "after": {
+      "adapter": null,
+      "channel": null,
+      "coordinator_ieee": null,
+      "coordinator_type": null,
+      "extended_pan_id": null,
+      "pan_id": null,
+      "z2m_version": null,
+      "zigbee_herdsman_version": null
+    },
+    "before": {
+      "adapter": null,
+      "channel": null,
+      "coordinator_ieee": null,
+      "coordinator_type": null,
+      "extended_pan_id": null,
+      "pan_id": null,
+      "z2m_version": null,
+      "zigbee_herdsman_version": null
+    },
+    "changes": {}
+  },
+  "nodes": {
+    "added": [],
+    "changed": [],
+    "removed": []
+  },
+  "schema": 1,
+  "summary": {
+    "added_links": 0,
+    "added_nodes": 0,
+    "after_links": 1344,
+    "after_nodes": 96,
+    "before_links": 1344,
+    "before_nodes": 96,
+    "changed_links": 0,
+    "degraded_links": 0,
+    "network_changes": 0,
+    "removed_links": 0,
+    "removed_nodes": 0,
+    "route_changes": 0
+  },
+  "thresholds": {
+    "lqi_degradation": 15
+  }
+}

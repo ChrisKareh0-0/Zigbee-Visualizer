@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zigbee Mesh Lab</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">ZIGBEE2MQTT / FIELD TOOL</p>
+        <h1>Zigbee Mesh Lab</h1>
+        <p class="subtitle">Capture a known-good mesh, inspect its topology, and see exactly what changed after an outage.</p>
+      </div>
+      <div class="status-pill" id="serverStatus"><span class="dot"></span> Connecting</div>
+    </header>
+
+    <section class="layout">
+      <aside class="panel settings-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">CONNECTION</p>
+            <h2>Capture settings</h2>
+          </div>
+          <span class="lock-mark">LOCAL</span>
+        </div>
+        <p class="muted small">Credentials stay in this browser tab and are used only when you start a capture.</p>
+        <label>MQTT host<input id="mqttHost" value="localhost" autocomplete="off"></label>
+        <div class="two-col">
+          <label>Port<input id="mqttPort" type="number" value="1883" min="1" max="65535"></label>
+          <label>Base topic<input id="baseTopic" value="zigbee2mqtt" autocomplete="off"></label>
+        </div>
+        <label>Username<input id="mqttUsername" autocomplete="username"></label>
+        <label>Password<input id="mqttPassword" type="password" autocomplete="current-password"></label>
+        <label class="checkbox"><input id="mqttTls" type="checkbox"> Use TLS</label>
+        <label class="checkbox"><input id="includeRoutes" type="checkbox"> Include active routes <span class="muted small">slower scan</span></label>
+        <label>Snapshot label (optional)<input id="snapshotLabel" placeholder="Defaults to date and time" autocomplete="off"></label>
+        <button class="primary full" id="snapshotButton"><span class="button-icon">＋</span> Capture snapshot</button>
+        <button class="ghost full" id="importButton">⇧ Import raw JSON file</button>
+        <input id="importFile" type="file" accept=".json,application/json" hidden>
+        <label class="import-paste">Or paste a raw MQTT response
+          <textarea id="importText" rows="4" placeholder='{"data":{"value":{"nodes":[],"links":[]}}}'></textarea>
+        </label>
+        <button class="ghost full" id="pasteImportButton">⇩ Import pasted JSON</button>
+        <p class="hint">A scan can take up to a couple of minutes. Keep scheduled captures at least 15 minutes apart.</p>
+      </aside>
+
+      <main class="content">
+        <div id="toast" class="toast hidden"></div>
+        <section class="hero-grid">
+          <div class="metric-card accent"><span>Snapshots</span><strong id="snapshotCount">0</strong><small>stored locally</small></div>
+          <div class="metric-card"><span>Selected mesh</span><strong id="selectedNodes">—</strong><small id="selectedLinks">choose a snapshot</small></div>
+          <div class="metric-card"><span>Comparison</span><strong id="comparisonState">Ready</strong><small id="comparisonHint">select before and after</small></div>
+        </section>
+
+        <section class="panel snapshots-panel">
+          <div class="panel-heading split">
+            <div>
+              <p class="eyebrow">HISTORY</p>
+              <h2>Snapshots</h2>
+            </div>
+            <button class="ghost" id="refreshButton">↻ Refresh</button>
+          </div>
+          <div class="compare-bar">
+            <div class="select-wrap"><span>BEFORE</span><select id="beforeSelect"><option value="">Select snapshot</option></select></div>
+            <div class="arrow">→</div>
+            <div class="select-wrap"><span>AFTER</span><select id="afterSelect"><option value="">Select snapshot</option></select></div>
+            <label class="threshold">LQI drop threshold<input id="lqiThreshold" type="number" value="15" min="0" max="255"></label>
+            <button class="primary" id="compareButton">Compare meshes</button>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Captured</th><th>Label</th><th>Nodes</th><th>Links</th><th>Channel</th><th></th></tr></thead>
+              <tbody id="snapshotRows"><tr><td colspan="6" class="empty">No snapshots yet. Capture the first baseline from the panel.</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel map-panel">
+          <div class="panel-heading split">
+            <div>
+              <p class="eyebrow">TOPOLOGY</p>
+              <h2 id="mapTitle">Network map</h2>
+            </div>
+            <div class="map-heading-actions">
+              <div class="legend"><span><i class="legend-node coordinator"></i>Coordinator</span><span><i class="legend-node router"></i>Router</span><span><i class="legend-node end-device"></i>End device</span></div>
+              <div class="map-controls" aria-label="Map controls">
+                <label>Layout<select id="mapLayoutSelect"><option value="hierarchy">Hierarchy</option><option value="radial">Radial</option><option value="force">Force</option></select></label>
+                <label>Links<select id="mapLinkModeSelect"><option value="backbone">Backbone</option><option value="all">All connections</option></select></label>
+                <label>Labels<select id="mapLabelModeSelect"><option value="all">All names</option><option value="selected">Selected only</option></select></label>
+                <label>Min LQI<input id="mapLqiRange" type="range" min="0" max="255" value="0"><output id="mapLqiValue">0</output></label>
+                <button class="ghost" id="fitMapButton" disabled>Fit map</button>
+              </div>
+              <button class="ghost" id="fullscreenMapButton" disabled>⛶ Inspect full screen</button>
+            </div>
+          </div>
+          <div id="mapCanvas" class="map-canvas"><div class="map-empty">Select a snapshot to inspect its mesh.</div></div>
+          <div id="mapSelection" class="map-selection" aria-live="polite">Click a node or link to inspect it.</div>
+        </section>
+
+        <section class="panel diff-panel" id="diffPanel">
+          <div class="panel-heading split">
+            <div>
+              <p class="eyebrow">DIAGNOSTICS</p>
+              <h2>What changed?</h2>
+            </div>
+            <a id="markdownLink" class="ghost link disabled" href="#" target="_blank">Open Markdown report</a>
+          </div>
+          <div id="diffContent" class="diff-empty">Run a comparison to see changes between two meshes.</div>
+          <div id="diffMapSection" class="diff-map-section hidden" aria-live="polite">
+            <div class="diff-map-heading">
+              <div>
+                <p class="eyebrow">CHANGE MAP</p>
+                <h3>Topology changes</h3>
+              </div>
+              <div class="diff-map-tools">
+                <span class="diff-key added-key">Added</span>
+                <span class="diff-key removed-key">Removed</span>
+                <span class="diff-key changed-key">Changed</span>
+                <button class="ghost" id="fullscreenDiffMapButton" disabled>⛶ Inspect changes full screen</button>
+              </div>
+            </div>
+            <div id="diffMapCanvas" class="diff-map-canvas"></div>
+            <p class="hint">Stable links are dimmed. Added links are green, removed links are red, and changed/degraded links are amber.</p>
+          </div>
+        </section>
+      </main>
+    </section>
+    <footer>IEEE addresses are used for identity. Short network-address changes alone are not treated as device replacements.</footer>
+  </div>
+  <div id="mapInspector" class="map-inspector hidden" role="dialog" aria-modal="true" aria-labelledby="inspectorMapTitle">
+    <header class="map-inspector-header">
+      <div>
+        <p class="eyebrow">FULL-SCREEN INSPECTOR</p>
+        <h2 id="inspectorMapTitle">Network map</h2>
+        <p id="inspectorMapHint" class="muted small">Drag to pan · use the wheel or controls to zoom</p>
+      </div>
+      <div class="map-inspector-toolbar">
+        <span class="inspector-stat"><strong id="inspectorNodes">0</strong> nodes</span>
+        <span class="inspector-stat"><strong id="inspectorLinks">0</strong> links</span>
+        <button class="ghost" id="zoomOutButton" aria-label="Zoom out">−</button>
+        <span id="zoomValue" class="zoom-value">100%</span>
+        <button class="ghost" id="zoomInButton" aria-label="Zoom in">+</button>
+        <button class="ghost" id="resetMapViewButton">Reset view</button>
+        <button class="primary" id="closeMapInspector">Close</button>
+      </div>
+    </header>
+    <div id="inspectorMapCanvas" class="map-inspector-canvas"><div id="inspectorGraph" class="graph-surface"></div></div>
+    <footer class="map-inspector-footer">Scroll to zoom · drag the map to pan · hover a node or link for details · press Esc to close</footer>
+  </div>
+  <script src="/vendor/cytoscape.min.js"></script>
+  <script src="/vendor/dagre.min.js"></script>
+  <script src="/vendor/cytoscape-dagre.min.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
