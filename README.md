@@ -20,11 +20,14 @@ The repository includes a `pyproject.toml` entrypoint and dependency list so
 Vercel can build the Python handler. Push `pyproject.toml`,
 `mesh_frontend.py`, and `zigbee_mesh.py` together, then redeploy the project.
 
-The Vercel deployment is intended for visualizing snapshots committed to the
-repository. Vercel function storage is temporary, so imports and MQTT captures
-made through the deployed site are not a durable database. For durable
-captures, keep using the local frontend or commit/export the resulting
-snapshot files to the repository (or connect a separate persistent store).
+The Vercel deployment can visualize snapshots committed to the repository and
+can import new JSON maps directly from the browser. Imported maps are stored in
+the browser's IndexedDB, so they survive reloads and Vercel function cold
+starts. They are private to that browser/profile and are not a shared database;
+clear browser data or use another device and they will not be present there.
+MQTT captures should still be run with the local frontend because a Vercel
+function cannot reliably reach a private broker or provide durable server-side
+storage.
 
 Open `http://127.0.0.1:8765`. The frontend keeps MQTT credentials in the
 current browser tab only; the backend stores redacted snapshot metadata and

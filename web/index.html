@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Zigbee Mesh Lab</title>
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles.css?v=vercel-upload-20260915">
 </head>
 <body>
   <div class="shell">
@@ -14,10 +14,13 @@
         <h1>Zigbee Mesh Lab</h1>
         <p class="subtitle">Capture a known-good mesh, inspect its topology, and see exactly what changed after an outage.</p>
       </div>
-      <div class="status-pill" id="serverStatus"><span class="dot"></span> Connecting</div>
+      <div class="topbar-actions">
+        <button class="ghost" id="changesPageButton">What changed</button>
+        <div class="status-pill" id="serverStatus"><span class="dot"></span> Connecting</div>
+      </div>
     </header>
 
-    <section class="layout">
+    <section class="layout" id="mainPage">
       <aside class="panel settings-panel">
         <div class="panel-heading">
           <div>
@@ -44,7 +47,7 @@
           <textarea id="importText" rows="4" placeholder='{"data":{"value":{"nodes":[],"links":[]}}}'></textarea>
         </label>
         <button class="ghost full" id="pasteImportButton">⇩ Import pasted JSON</button>
-        <p class="hint">A scan can take up to a couple of minutes. Keep scheduled captures at least 15 minutes apart.</p>
+        <p class="hint">A scan can take up to a couple of minutes. Keep scheduled captures at least 15 minutes apart. On the deployed site, imported JSON files are saved in this browser.</p>
       </aside>
 
       <main class="content">
@@ -61,7 +64,10 @@
               <p class="eyebrow">HISTORY</p>
               <h2>Snapshots</h2>
             </div>
-            <button class="ghost" id="refreshButton">↻ Refresh</button>
+            <div class="panel-actions">
+              <button class="ghost" id="openChangesButton">What changed</button>
+              <button class="ghost" id="refreshButton">↻ Refresh</button>
+            </div>
           </div>
           <div class="compare-bar">
             <div class="select-wrap"><span>BEFORE</span><select id="beforeSelect"><option value="">Select snapshot</option></select></div>
@@ -85,7 +91,11 @@
               <h2 id="mapTitle">Network map</h2>
             </div>
             <div class="map-heading-actions">
-              <div class="legend"><span><i class="legend-node coordinator"></i>Coordinator</span><span><i class="legend-node router"></i>Router</span><span><i class="legend-node end-device"></i>End device</span></div>
+              <div class="legend">
+                <span><i class="legend-node coordinator"></i>Coordinator</span><span><i class="legend-node router"></i>Router</span><span><i class="legend-node end-device"></i>End device</span>
+                <span class="legend-divider" aria-hidden="true"></span>
+                <span><i class="legend-link lqi-bad"></i>Bad LQI</span><span><i class="legend-link lqi-better"></i>Better LQI</span><span><i class="legend-link lqi-best"></i>Best LQI</span>
+              </div>
               <div class="map-controls" aria-label="Map controls">
                 <label>Layout<select id="mapLayoutSelect"><option value="hierarchy">Hierarchy</option><option value="radial">Radial</option><option value="force">Force</option></select></label>
                 <label>Links<select id="mapLinkModeSelect"><option value="backbone">Backbone</option><option value="all">All connections</option></select></label>
@@ -100,33 +110,58 @@
           <div id="mapSelection" class="map-selection" aria-live="polite">Click a node or link to inspect it.</div>
         </section>
 
-        <section class="panel diff-panel" id="diffPanel">
-          <div class="panel-heading split">
-            <div>
-              <p class="eyebrow">DIAGNOSTICS</p>
-              <h2>What changed?</h2>
-            </div>
-            <a id="markdownLink" class="ghost link disabled" href="#" target="_blank">Open Markdown report</a>
-          </div>
-          <div id="diffContent" class="diff-empty">Run a comparison to see changes between two meshes.</div>
-          <div id="diffMapSection" class="diff-map-section hidden" aria-live="polite">
-            <div class="diff-map-heading">
-              <div>
-                <p class="eyebrow">CHANGE MAP</p>
-                <h3>Topology changes</h3>
-              </div>
-              <div class="diff-map-tools">
-                <span class="diff-key added-key">Added</span>
-                <span class="diff-key removed-key">Removed</span>
-                <span class="diff-key changed-key">Changed</span>
-                <button class="ghost" id="fullscreenDiffMapButton" disabled>⛶ Inspect changes full screen</button>
-              </div>
-            </div>
-            <div id="diffMapCanvas" class="diff-map-canvas"></div>
-            <p class="hint">Stable links are dimmed. Added links are green, removed links are red, and changed/degraded links are amber.</p>
-          </div>
-        </section>
       </main>
+    </section>
+
+    <section id="changesPage" class="changes-page hidden" aria-labelledby="changesPageTitle">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">DIAGNOSTICS</p>
+          <h2 id="changesPageTitle">What changed?</h2>
+          <p class="page-description">Compare two dated captures. The old mesh is on the left; the new mesh is on the right.</p>
+        </div>
+        <div class="page-actions">
+          <button class="ghost" id="backToLabButton">← Mesh Lab</button>
+          <a id="markdownLink" class="ghost link disabled" href="#" target="_blank">Open Markdown report</a>
+        </div>
+      </div>
+
+      <section class="panel diff-panel" id="diffPanel">
+        <div class="compare-bar changes-compare-bar">
+          <div class="select-wrap"><span>BEFORE</span><select id="changesBeforeSelect"><option value="">Select snapshot</option></select></div>
+          <div class="arrow">→</div>
+          <div class="select-wrap"><span>AFTER</span><select id="changesAfterSelect"><option value="">Select snapshot</option></select></div>
+          <label class="threshold">LQI drop threshold<input id="changesLqiThreshold" type="number" value="15" min="0" max="255"></label>
+          <button class="primary" id="changesCompareButton">Compare meshes</button>
+        </div>
+        <div id="diffContent" class="diff-empty">Choose two different snapshots, then compare them.</div>
+        <div id="diffMapSection" class="diff-map-section hidden" aria-live="polite">
+          <div class="diff-map-heading">
+            <div>
+              <p class="eyebrow">CHANGE MAP</p>
+              <h3>Before and after topology</h3>
+            </div>
+            <div class="diff-map-tools">
+              <span class="diff-key added-key">Added</span>
+              <span class="diff-key removed-key">Removed</span>
+              <span class="diff-key changed-key">Changed</span>
+              <button class="ghost" id="toggleStableDiffButton">Show stable links</button>
+              <button class="ghost" id="fullscreenDiffMapButton" disabled>⛶ Inspect new map full screen</button>
+            </div>
+          </div>
+          <div class="diff-map-split">
+            <section class="diff-map-side" aria-labelledby="beforeMapTitle">
+              <div class="diff-map-side-heading"><h3 id="beforeMapTitle">Before</h3><span id="beforeMapMeta" class="muted small"></span></div>
+              <div id="beforeChangeMapCanvas" class="diff-map-canvas"></div>
+            </section>
+            <section class="diff-map-side" aria-labelledby="afterMapTitle">
+              <div class="diff-map-side-heading"><h3 id="afterMapTitle">After</h3><span id="afterMapMeta" class="muted small"></span></div>
+              <div id="afterChangeMapCanvas" class="diff-map-canvas"></div>
+            </section>
+          </div>
+          <p id="diffMapFocusNote" class="hint">Showing changed topology only. Stable nodes remain as context; use “Show stable links” to view the complete mesh.</p>
+        </div>
+      </section>
     </section>
     <footer>IEEE addresses are used for identity. Short network-address changes alone are not treated as device replacements.</footer>
   </div>
@@ -153,6 +188,6 @@
   <script src="/vendor/cytoscape.min.js"></script>
   <script src="/vendor/dagre.min.js"></script>
   <script src="/vendor/cytoscape-dagre.min.js"></script>
-  <script src="/app.js"></script>
+  <script src="/app.js?v=vercel-upload-20260915"></script>
 </body>
 </html>

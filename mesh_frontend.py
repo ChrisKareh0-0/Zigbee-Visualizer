@@ -290,6 +290,23 @@ class Handler(BaseHTTPRequestHandler):
                 directory = self.app.import_snapshot(payload)
                 self.send_json({"snapshot_id": directory.name}, 201)
                 return
+            if parsed.path == "/api/compare":
+                before = payload.get("before_snapshot")
+                after = payload.get("after_snapshot")
+                if not isinstance(before, dict) or not isinstance(after, dict):
+                    raise ValueError("Both snapshots are required")
+                for name, snapshot in (("before", before), ("after", after)):
+                    networkmap = snapshot.get("networkmap")
+                    if (
+                        not isinstance(networkmap, dict)
+                        or not isinstance(networkmap.get("nodes"), list)
+                        or not isinstance(networkmap.get("links"), list)
+                    ):
+                        raise ValueError(f"The {name} snapshot does not contain a valid network map")
+                threshold = int(payload.get("lqi_threshold") or 15)
+                diff = mesh.compare(before, after, max(0, min(255, threshold)))
+                self.send_json({"available": True, "diff": diff, "markdown": mesh.markdown_diff(diff)})
+                return
             if parsed.path == "/api/diff":
                 before = str(payload.get("before") or "")
                 after = str(payload.get("after") or "")
